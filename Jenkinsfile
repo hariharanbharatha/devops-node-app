@@ -1,23 +1,32 @@
 pipeline {
     agent any
 
-    stages {
-        stage('Clone Repository') {
-            steps {
-                git 'https://github.com/hariharanbharatha/devops-node-app.git'
-            }
-        }
+    environment {
+        IMAGE_NAME = "devops-node-app"
+        CONTAINER_NAME = "devops-node-container"
+    }
 
+    stages {
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t devops-node-app .'
+                script {
+                    sh "docker build -t $IMAGE_NAME ."
+                }
             }
         }
 
         stage('Run Docker Container') {
             steps {
-                sh 'docker rm -f devops-node-container || true'
-                sh 'docker run -d -p 3000:3000 --name devops-node-container devops-node-app'
+                script {
+                    // Stop and remove old container if running
+                    sh """
+                    if [ \$(docker ps -q -f name=$CONTAINER_NAME) ]; then
+                        docker stop $CONTAINER_NAME
+                        docker rm $CONTAINER_NAME
+                    fi
+                    docker run -d -p 3000:3000 --name $CONTAINER_NAME $IMAGE_NAME
+                    """
+                }
             }
         }
     }
