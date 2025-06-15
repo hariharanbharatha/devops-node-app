@@ -2,8 +2,9 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "devops-node-app"
-        CONTAINER_NAME = "devops-node-container"
+        IMAGE_NAME = 'devops-node-app'
+        CONTAINER_NAME = 'node-app-container'
+        PORT = '3000'
     }
 
     stages {
@@ -18,14 +19,22 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 script {
-                    // Stop and remove old container if running
+                    // Stop and remove old container if it exists
+                    sh "docker rm -f $CONTAINER_NAME || true"
+
+                    // Run container
                     sh """
-                    if [ \$(docker ps -q -f name=$CONTAINER_NAME) ]; then
-                        docker stop $CONTAINER_NAME
-                        docker rm $CONTAINER_NAME
-                    fi
-                    docker run -d -p 3000:3000 --name $CONTAINER_NAME $IMAGE_NAME
+                    docker run -d --name $CONTAINER_NAME -p $PORT:$PORT $IMAGE_NAME
                     """
+                }
+            }
+        }
+
+        stage('Run Test') {
+            steps {
+                script {
+                    echo '✅ Running test automation (placeholder)'
+                    sh 'echo "Simulated Test Passed!"'
                 }
             }
         }
