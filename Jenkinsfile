@@ -4,14 +4,15 @@ pipeline {
     environment {
         IMAGE_NAME = "devops-node-app"
         CONTAINER_NAME = "node-app-container"
-        PORT = "3000"
+        APP_PORT = "3000"
     }
 
     stages {
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh 'docker build -t $IMAGE_NAME .'
+                    echo "🛠️ Building Docker image..."
+                    sh "docker build -t $IMAGE_NAME ."
                 }
             }
         }
@@ -19,11 +20,23 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 script {
-                    // Stop & remove existing container if running
-                    sh '''
-                    docker rm -f $CONTAINER_NAME || true
-                    docker run -d --name $CONTAINER_NAME -p $PORT:$PORT $IMAGE_NAME
-                    '''
+                    echo "🚀 Stopping any existing container on port $APP_PORT..."
+
+                    // Free up port if container exists
+                    sh """
+                    if docker ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
+                      docker rm -f $CONTAINER_NAME
+                    fi
+
+                    PORT_IN_USE=\$(lsof -t -i:$APP_PORT)
+                    if [ ! -z "\$PORT_IN_USE" ]; then
+                      echo "⚠️ Port $APP_PORT is in use by PID \$PORT_IN_USE, killing..."
+                      sudo kill -9 \$PORT_IN_USE
+                    fi
+                    """
+
+                    echo "📦 Running Docker container..."
+                    sh "docker run -d --name $CONTAINER_NAME -p $APP_PORT:$APP_PORT $IMAGE_NAME"
                 }
             }
         }
@@ -31,8 +44,8 @@ pipeline {
         stage('Run Test') {
             steps {
                 script {
-                    // Example health check (optional)
-                    sh 'curl --fail http://localhost:$PORT || echo "App might not be healthy"'
+                    echo "🧪 Running health test..."
+                    sh "curl -f http://localhost:$APP_PORT || (echo '❌ App is not responding!' && exit 1)"
                 }
             }
         }
@@ -43,7 +56,7 @@ pipeline {
             echo "🚨 Deployment failed!"
         }
         success {
-            echo "✅ App deployed successfully to http://54.173.148.116:3000"
+            echo "✅ Deployment succeeded! Visit http://<YOUR_PUBLIC_IP>:3000"
         }
     }
 }
