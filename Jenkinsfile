@@ -2,12 +2,18 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'devops-node-app'
-        CONTAINER_NAME = 'node-app-container'
-        APP_PORT = '3000'
+        IMAGE_NAME = "devops-node-app"
+        CONTAINER_NAME = "node-app-container"
+        APP_PORT = "3000"
     }
 
     stages {
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 script {
@@ -20,20 +26,14 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 script {
-                    echo "🚀 Stopping any existing container on port $APP_PORT..."
+                    echo "🚀 Stopping and removing any existing container named $CONTAINER_NAME..."
 
-                    // ✅ Safe cleanup if port or container already in use
                     sh """
-                        CONTAINER_ID=\$(docker ps -q --filter "name=$CONTAINER_NAME")
+                        # Find if container (running or stopped) exists
+                        CONTAINER_ID=\$(docker ps -aq --filter "name=$CONTAINER_NAME")
                         if [ ! -z "\$CONTAINER_ID" ]; then
-                            echo "🧹 Removing existing container: \$CONTAINER_ID"
+                            echo "🧹 Removing existing container \$CONTAINER_ID"
                             docker rm -f \$CONTAINER_ID
-                        fi
-
-                        PORT_IN_USE=\$(lsof -t -i:$APP_PORT || true)
-                        if [ ! -z "\$PORT_IN_USE" ]; then
-                            echo "⚠️ Port $APP_PORT in use by PID \$PORT_IN_USE, killing it..."
-                            sudo kill -9 \$PORT_IN_USE
                         fi
 
                         echo "🚀 Starting new container on port $APP_PORT..."
@@ -45,17 +45,17 @@ pipeline {
 
         stage('Run Test') {
             steps {
-                echo "✅ You can add test steps here, like: npm test"
+                echo "✅ Tests would run here (add your test script if needed)"
             }
         }
     }
 
     post {
-        success {
-            echo "✅ Deployment succeeded!"
-        }
         failure {
             echo "🚨 Deployment failed!"
+        }
+        success {
+            echo "✅ Deployment successful and app is running on port $APP_PORT!"
         }
     }
 }
